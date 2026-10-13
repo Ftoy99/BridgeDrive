@@ -211,6 +211,12 @@ class TransfuserAgent(AbstractAgent):
                 optimizer.add_param_group({'params': pg, **cfg})
         
         # scheduler = build_from_configs(optim.lr_scheduler, scheduler_cfg, optimizer=optimizer)
+        if self._config.scheduler_type == "CosineAnnealingWarmRestarts":
+            # paper (Appendix C.3): AdamW + cosine annealing with warm restarts, T0=10, T_mult=2; Lightning steps it per epoch
+            scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
+                optimizer, T_0=self._config.sched_T0, T_mult=self._config.sched_T_mult
+            )
+            return {'optimizer': optimizer, 'lr_scheduler': scheduler}
         scheduler = WarmupCosLR(
             optimizer=optimizer,
             lr=self._lr,

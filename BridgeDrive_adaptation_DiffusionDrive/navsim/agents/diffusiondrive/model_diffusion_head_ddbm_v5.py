@@ -319,7 +319,9 @@ class TrajectoryHead(nn.Module):
         xt_prev_ = torch.cat([xt_prev, head0_mean], dim=-1)
         x0_sample = torch.gather(xt_prev_, 1, mode_idx).squeeze(1)
 
-        return {"trajectory": x0_sample} # align with navsim format
+        # poses_all / poses_cls: full denoised candidate pool + classifier logits, for pool-level eval
+        # (run_pdm_score_fast.py best/worst). Extra keys are ignored by the standard pipeline.
+        return {"trajectory": x0_sample, "poses_all": xt_prev_, "poses_cls": poses_cls_list[-1]} # align with navsim format
 
 
 class DiffMotionPlanningRefinementModule(nn.Module):
@@ -669,7 +671,10 @@ class CustomTransformerDecoder(nn.Module):
             poses_reg, poses_cls = mod(traj_feature, traj_points, plan_anchor, bev_feature, bev_spatial_shape, agents_query, ego_query, time_embed, global_img)
             poses_reg_list.append(poses_reg)
             poses_cls_list.append(poses_cls)
-            traj_points = poses_reg[...,:2].clone().detach()
+            # NOTE: no .detach() here. The regression loss only sees the LAST layer's output (best_reg), so with a
+            # detach the first layer received no gradient at all and stayed at its random init. Gradient now flows
+            # from the last layer back through these positions (poses_reg of the last layer = delta + traj_points).
+            traj_points = poses_reg[...,:2].clone()
         return poses_reg_list, poses_cls_list
 
 class CustomTransformerDecoderCls(nn.Module):

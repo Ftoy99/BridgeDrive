@@ -138,7 +138,9 @@ class TransfuserConfig:
     weight_decay: float = 1e-4
     lr_steps = [70]
     optimizer_type = "AdamW"
-    scheduler_type = "MultiStepLR"
+    scheduler_type: str = "MultiStepLR"  # annotated so hydra can override it ("CosineAnnealingWarmRestarts" = paper); MultiStepLR name kept, code path = WarmupCosLR
+    sched_T0: int = 10      # CosineAnnealingWarmRestarts first-cycle length in EPOCHS (paper Appendix C.3: T0=10, T_mult=2)
+    sched_T_mult: int = 2
     cfg_lr_mult = 0.5
     opt_paramwise_cfg = {
         "name":{

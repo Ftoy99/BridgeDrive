@@ -1,0 +1,5 @@
+.idea/
+weights/
+test/*.log
+test/train.l
+test/train_cycle2.

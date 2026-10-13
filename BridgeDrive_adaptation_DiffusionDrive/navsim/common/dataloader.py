@@ -116,7 +116,6 @@ class SceneLoader:
         :return: scene dataclass
         """
         assert token in self.tokens
-        print("here:", self.scene_frames_dicts[token])
         return Scene.from_scene_dict_list(
             self.scene_frames_dicts[token],
             self._sensor_blobs_path,
