@@ -264,6 +264,14 @@ class TrainingConfig(BaseConfig):
     speed_holder: int = int(diffusion_speed)
     step_num: int = 20 
 
+    # --- HeavyBridge (head selected by bridge_variant; 'bridgedrive' leaves the original head untouched) ---
+    bridge_variant: str = "bridgedrive"  # 'bridgedrive' | 'heavybridge'
+    hb_alpha: float = 1.8  # stability index, (0, 2); paper headline (1.8, 5/4)
+    hb_varpi: float = 1.25  # jump-energy factor, >= 1
+    hb_eta: float = 0.5  # DBIM churn, paper uses 0.5
+    hb_num_grid: int = 20  # profile grid N; step_num at test time must divide it (paper: step_num=2)
+    hb_profile: str = "levy"  # 'levy' | 'ones' (lambda=1, Gaussian bridge on the same code path)
+
     @property
     def sync_batchnorm(self) -> bool:
         """If true synchronize batch normalization across distributed processes."""

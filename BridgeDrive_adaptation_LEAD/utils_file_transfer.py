@@ -98,6 +98,10 @@ items_to_transfer= [
     "lead/training/training_utils_bridgedrive.py", 
     "lead/visualization/visualizer_bridgedrive.py",
     "scripts/posttrain_bridgedrive.sh",  
+    "scripts/posttrain_heavybridge.sh",
+    "scripts/eval_bench2drive_heavybridge.sh",
+    "tests/test_heavy_bridge_sampler.py",
+    "tests/test_heavy_head_smoke.py",
     "scripts/eval_bench2drive_bridgedrive.sh", 
     "scripts/eval_fail2drive_bridgedrive.sh",
     "utils_file_transfer.py"

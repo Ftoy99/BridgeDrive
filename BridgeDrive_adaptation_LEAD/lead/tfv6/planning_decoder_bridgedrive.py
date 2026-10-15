@@ -15,6 +15,7 @@ from lead.training.config_training import TrainingConfig
 # BridgeDrive
 from lead.tfv6.diffusion_modules.model_diffusion_head_ddbm import TrajectoryHead
 from lead.tfv6.diffusion_modules.multimodal_loss_ddbm import LossComputer
+from lead.tfv6.diffusion_modules.model_diffusion_head_heavybridge import HeavyTrajectoryHead
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -70,8 +71,9 @@ class PlanningDecoderDDBM(nn.Module):
             norm=nn.LayerNorm(self.config.transfuser_token_dim),
         )
 
-        # BridgeDrive
-        self.trajectory_head = TrajectoryHead(
+        # BridgeDrive, or HeavyBridge when config.bridge_variant == "heavybridge"
+        head_cls = {"bridgedrive": TrajectoryHead, "heavybridge": HeavyTrajectoryHead}[self.config.bridge_variant]
+        self.trajectory_head = head_cls(
             num_poses=self.config.trajectory_sampling_num_poses,
             d_ffn=self.config.tf_d_ffn,
             d_model=self.config.tf_d_model,

@@ -3,3 +3,5 @@ weights/
 test/*.log
 test/train.l
 test/train_cycle2.
+__pycache__/
+*.pyc
