@@ -3,7 +3,7 @@
 A run dir holds params.json (flat), metrics.json (flat, numeric), optional tags.json; every file in it is attached as artifact.
   uv run --no-project --python 3.11 --with 'mlflow>=3.5' python test/selector/log_selector_run.py RUN_DIR --experiment selector_audit
 """
-import argparse, json, os
+import argparse, json, os, re
 from pathlib import Path
 
 os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
@@ -20,11 +20,15 @@ metrics = json.loads((d / "metrics.json").read_text())
 tags = json.loads((d / "tags.json").read_text()) if (d / "tags.json").exists() else {}
 
 mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "sqlite:////mnt/ds/mlflow/mlflow.db"))
+ART = "file:///mnt/ds/mlflow/artifacts/"  # same disk as the store; default would be ./mlruns in the cwd
+if mlflow.get_experiment_by_name(a.experiment) is None:
+    mlflow.create_experiment(a.experiment, artifact_location=ART + a.experiment)
 mlflow.set_experiment(a.experiment)
+clean = lambda k: re.sub(r"[^A-Za-z0-9_\-. :/]", "_", k)  # mlflow key charset
 with mlflow.start_run(run_name=a.run_name or d.name) as run:
-    mlflow.log_params({k: str(v)[:500] for k, v in params.items()})
+    mlflow.log_params({clean(k): str(v)[:500] for k, v in params.items()})
     mlflow.set_tags({k: str(v) for k, v in tags.items()})
-    mlflow.log_metrics({k: float(v) for k, v in metrics.items() if isinstance(v, (int, float)) and v == v})
+    mlflow.log_metrics({clean(k): float(v) for k, v in metrics.items() if isinstance(v, (int, float)) and v == v})
     for f in sorted(d.iterdir()):
         if f.is_file() and f.stat().st_size < 200e6:
             mlflow.log_artifact(str(f))
