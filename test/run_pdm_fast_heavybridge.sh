@@ -43,6 +43,6 @@ if [[ "${MLFLOW_LOG:-1}" == "1" ]]; then
     --run-name "${EXP_NAME:-heavybridge_pdm_fast_${HB_PROFILE:-levy}}" \
     --param ckpt="${CKPT}" --param variant=heavybridge --param beta_d="${BETA_D:-2.0}" \
     --param hb_profile="${HB_PROFILE:-levy}" --param hb_alpha="${HB_ALPHA:-1.8}" --param hb_varpi="${HB_VARPI:-1.25}" \
-    --param hb_eta="${HB_ETA:-0.5}" --param hb_step_num="${HB_STEPS:-2}" --param max_scenes="${MAX_SCENES:-all}" \
+    --param hb_eta="${HB_ETA:-0.5}" --param hb_step_num="${HB_STEPS:-2}" --param max_scenes="${MAX_SCENES:-all}" --param seed="${SEED:-none}" \
     ${MLFLOW_TAGS:+--tag "${MLFLOW_TAGS}"} 2>&1 | grep -v "mlflow.agent.hint" || echo "WARN: mlflow logging failed (eval result is still in the exp dir)"
 fi

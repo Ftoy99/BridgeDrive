@@ -34,6 +34,9 @@ for c in df.columns:
         metrics[c] = float(avg[c])
     except (TypeError, ValueError):
         pass
+for k in (20, 80):  # forced-anchor catastrophes: scenes with PDMS < 0.5 at classifier rank k (paper Table 5/12)
+    if f"rank_score_{k}" in body.columns:
+        metrics[f"catas_k{k}"] = float((body[f"rank_score_{k}"] < 0.5).sum())
 metrics["pdms"] = metrics.get("select_score", metrics.get("score", float("nan")))  # deployed score, one name for dashboards
 
 mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "sqlite:////mnt/ds/mlflow/mlflow.db"))

@@ -40,13 +40,18 @@ PRESET="${PRESET:-paper}"
 # CYCLES=N (paper preset): run N full cosine warm-restart cycles in ONE go, restarts happen on their own.
 #   cycle lengths 10, 20, 40, 80 epochs -> total epochs 10, 30, 70, 150 for N=1,2,3,4.  Default N=1 (= the paper's 10 epochs).
 CYCLES="${CYCLES:-1}"
+# HB_RECIPE=screening (default): the HeavyBridge paper's screening recipe (Sec. 5): 15 epochs, lr 1e-4, grad clip 1, cosine
+# hard-coded to 100 epochs so the run stops at ~95% of peak LR (hot-stopped) -> T0=100 (scheduler is stepped per epoch).
+# HB_RECIPE=none keeps the BridgeDrive paper-preset defaults below. Any of EPOCHS/LR/CLIP/T0 set in the env wins.
+if [[ "${HB_RECIPE:-screening}" == "screening" ]]; then : "${EPOCHS:=15}"; : "${LR:=1e-4}"; : "${CLIP:=1.0}"; : "${T0:=100}"; fi
 if [[ "${PRESET}" == "paper" ]]; then
   : "${EPOCHS:=$((10 * ((1 << CYCLES) - 1)))}"; : "${ACCUM:=1}"; : "${LR:=3e-4}"; : "${BETA_D:=2.0}"
   EXP_NAME="${EXP_NAME:-training_heavybridge_k80_${HB_PROFILE:-levy}}"
   CYCLE_END_EPOCHS=""; _e=0; _len=10
   while (( _e + _len <= EPOCHS )); do _e=$((_e + _len)); CYCLE_END_EPOCHS="${CYCLE_END_EPOCHS:+${CYCLE_END_EPOCHS},}$((_e - 1))"; _len=$((_len * 2)); done
+  [[ "${T0:-10}" != "10" ]] && CYCLE_END_EPOCHS=""  # cycle-end ckpts only make sense for the 10/20/40/80 restart schedule
   export CYCLE_END_EPOCHS
-  PAPER_OVERRIDES=(+agent.config.scheduler_type=CosineAnnealingWarmRestarts +agent.config.sched_T0=10 +agent.config.sched_T_mult=2 agent.config.beta_d="${BETA_D}")
+  PAPER_OVERRIDES=(+agent.config.scheduler_type=CosineAnnealingWarmRestarts +agent.config.sched_T0="${T0:-10}" +agent.config.sched_T_mult=2 agent.config.beta_d="${BETA_D}")
 else
   EXP_NAME="${EXP_NAME:-training_heavybridge_k80_${HB_PROFILE:-levy}_authors}"
   PAPER_OVERRIDES=()
@@ -84,6 +89,7 @@ EXTRA+=(agent.warm_start_path="${WARM_START}" agent.config.hb_profile="${HB_PROF
 EXTRA+=(dataloader.params.pin_memory="${PIN_MEMORY:-false}")
 EXTRA+=(trainer.params.accumulate_grad_batches="${ACCUM}" trainer.params.gradient_clip_val="${CLIP}" trainer.params.precision="${PRECISION}")
 [[ -n "${LR:-}" ]] && EXTRA+=(agent.lr="${LR}")
+[[ -n "${SEED:-}" ]] && EXTRA+=(seed="${SEED}")
 # extra hydra overrides, e.g. OVERRIDES="trainer.params.gradient_clip_val=1.0 trainer.params.precision=bf16-mixed"
 [[ -n "${OVERRIDES:-}" ]] && read -r -a _OV <<< "${OVERRIDES}" && EXTRA+=("${_OV[@]}")
 [[ -n "${RESUME:-}" ]] && EXTRA+=(agent.checkpoint_path="${RESUME}")
@@ -100,7 +106,7 @@ fi
 echo "cache  : ${CACHE_PATH}"
 echo "exp    : ${NAVSIM_EXP_ROOT}/${EXP_NAME}"
 echo "cycle-end checkpoints at epochs: ${CYCLE_END_EPOCHS:-none}"
-echo "preset=${PRESET} lr=${LR:-yaml} gpu=${CUDA_VISIBLE_DEVICES} epochs=${EPOCHS} batch=${BATCH_SIZE} x accum=${ACCUM} (eff $((BATCH_SIZE*ACCUM))) clip=${CLIP} precision=${PRECISION} workers=${NUM_WORKERS}"
+echo "recipe=${HB_RECIPE:-screening} T0=${T0:-10} seed=${SEED:-default} preset=${PRESET} lr=${LR:-yaml} gpu=${CUDA_VISIBLE_DEVICES} epochs=${EPOCHS} batch=${BATCH_SIZE} x accum=${ACCUM} (eff $((BATCH_SIZE*ACCUM))) clip=${CLIP} precision=${PRECISION} workers=${NUM_WORKERS}"
 
 cd "${DEVKIT}"
 python "${REPO_ROOT}/test/run_training_bridgedrive.py" \

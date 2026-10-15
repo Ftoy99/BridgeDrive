@@ -214,12 +214,12 @@ def main(cfg: DictConfig) -> None:
             "lr": cfg.agent.lr, "max_epochs": cfg.trainer.params.max_epochs, "batch_size": cfg.dataloader.params.batch_size,
             "accumulate": cfg.trainer.params.accumulate_grad_batches, "precision": cfg.trainer.params.precision,
             "seed": cfg.seed, "warm_start_path": cfg.agent.get("warm_start_path"), "resume": cfg.agent.checkpoint_path,
-            "scheduler": acfg.get("scheduler_type"),
+            "scheduler": acfg.get("scheduler_type"), "sched_T0": acfg.get("sched_T0"), "grad_clip": cfg.trainer.params.gradient_clip_val,
             **{k: acfg.get(k) for k in ("hb_profile", "hb_alpha", "hb_varpi", "hb_eta", "hb_num_grid", "hb_step_num") if acfg.get(k) is not None},
         }
         callbacks.append(MLflowRestCallback(os.environ.get("MLFLOW_TRAIN_EXPERIMENT", "navsim_train"),
                                             f"{cfg.experiment_name}_{Path(str(cfg.output_dir)).name}", params,
-                                            tags={"smoke": os.environ.get("SMOKE", "0") != "0" and "1" or "0"}))
+                                            tags={"smoke": "1" if (os.environ.get("SMOKE", "0") != "0" or os.environ.get("MLFLOW_SMOKE") == "1") else "0"}))
     trainer = pl.Trainer(**cfg.trainer.params, callbacks=callbacks)
 
     logger.info("Starting Training")
