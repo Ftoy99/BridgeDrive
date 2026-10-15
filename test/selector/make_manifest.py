@@ -29,7 +29,7 @@ a = ap.parse_args()
 src = Path(a.src).resolve()
 dst = ROOT / a.pool_id / a.split
 dst.mkdir(parents=True, exist_ok=True)
-files = sorted(glob.glob(str(src / "shard_*.npz"))) + [p for p in (src / "anchors.npy", src / "recon_ts.npy") if p.exists()]
+files = sorted(glob.glob(str(src / "shard_*.npz"))) + [p for p in (src / "anchors.npy", src / "recon_ts.npy", src / "metrics.json") if p.exists()]
 hashes = {}
 for f in files:
     f = Path(f); link = dst / f.name
@@ -39,11 +39,16 @@ for f in files:
 cache_sha = hashlib.sha256("".join(f"{k}:{v}" for k, v in sorted(hashes.items())).encode()).hexdigest()
 
 d = load(str(dst))
-score = d["pdm"][..., -1].astype(np.float64)
+cols = json.loads((src / "metrics.json").read_text())["columns"] if (src / "metrics.json").exists() else None
+sc_idx = cols.index("pdm_score") if cols else -1  # vocabulary label pools (GTRS) carry named columns and no model logits
+score = d["pdm"][..., sc_idx].astype(np.float32)
 N, K = score.shape
-sel = score[np.arange(N), d["logit1"].argmax(1)].mean()
+sel = score[np.arange(N), d["logit1"].argmax(1)].mean() if "logit1" in d else float("nan")
+if (src / "metrics.json").exists() and not (dst / "metrics_columns.json").exists():
+    (dst / "metrics_columns.json").symlink_to(src / "metrics.json")
 metrics = {"n_scenes": N, "K": K, "pdms_select": float(sel), "pdms_oracle": float(score.max(1).mean()),
            "pool_mean": float(score.mean()), "headroom": float(score.max(1).mean() - sel)}
+metrics = {k: v for k, v in metrics.items() if v == v}
 try:
     commit = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=Path(__file__).resolve().parents[2]).decode().strip()
 except Exception:
