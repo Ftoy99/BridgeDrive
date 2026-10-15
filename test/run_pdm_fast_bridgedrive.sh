@@ -34,3 +34,13 @@ python "${DEVKIT}/navsim/planning/script/run_pdm_score_fast.py" \
   agent.config.beta_d="${BETA_D:-2.0}" \
   experiment_name="${EXP_NAME:-bridgedrive_pdm_fast_ep45}" \
   "${EXTRA[@]}"
+
+# Log the result to MLflow (file store /mnt/ds/mlflow, readable via the mlflow MCP). Never fails the eval. MLFLOW_LOG=0 skips.
+if [[ "${MLFLOW_LOG:-1}" == "1" ]]; then
+  uv run --no-project --python 3.11 --with 'mlflow>=3.5' python "${REPO_ROOT}/test/log_pdm_to_mlflow.py" \
+    "${NAVSIM_EXP_ROOT}/${EXP_NAME:-bridgedrive_pdm_fast_ep45}" \
+    --run-name "${EXP_NAME:-bridgedrive_pdm_fast_ep45}" \
+    --param ckpt="${CKPT}" --param variant=bridgedrive --param beta_d="${BETA_D:-2.0}" \
+    --param step_num=20 --param max_scenes="${MAX_SCENES:-all}" \
+    ${MLFLOW_TAGS:+--tag "${MLFLOW_TAGS}"} 2>&1 | grep -v "mlflow.agent.hint" || echo "WARN: mlflow logging failed (eval result is still in the exp dir)"
+fi
