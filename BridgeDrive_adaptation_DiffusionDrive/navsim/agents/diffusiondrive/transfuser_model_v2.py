@@ -16,6 +16,7 @@ from navsim.agents.diffusiondrive.modules.multimodal_loss import LossComputer
 from torch.nn import TransformerDecoder,TransformerDecoderLayer
 from typing import Any, List, Dict, Optional, Union
 from navsim.agents.diffusiondrive.model_diffusion_head_ddbm_v5 import TrajectoryHead as DDBMTrajectoryHead
+from navsim.agents.diffusiondrive.model_diffusion_head_heavybridge import HeavyBridgeTrajectoryHead
 
 class V2TransfuserModel(nn.Module):
     """Torch module for Transfuser."""
@@ -90,6 +91,8 @@ class V2TransfuserModel(nn.Module):
             TrajectoryHead = TrajectoryFullDiffuHead
         elif config.head == "DDBMTrajectoryHead":
             TrajectoryHead = DDBMTrajectoryHead
+        elif config.head == "HeavyBridgeTrajectoryHead":
+            TrajectoryHead = HeavyBridgeTrajectoryHead
 
         self.trajectory_head_name = config.head
 

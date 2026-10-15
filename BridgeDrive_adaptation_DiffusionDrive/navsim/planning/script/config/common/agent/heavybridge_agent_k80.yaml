@@ -1,0 +1,29 @@
+_target_: navsim.agents.diffusiondrive.transfuser_agent.TransfuserAgent
+_convert_: 'all'
+
+config:
+  _target_: navsim.agents.diffusiondrive.transfuser_config.TransfuserConfig
+  _convert_: 'all'
+
+  trajectory_sampling:
+    _target_: nuplan.planning.simulation.trajectory.trajectory_sampling.TrajectorySampling
+    _convert_: 'all'
+    time_horizon: 4
+    interval_length: 0.5
+
+  latent: False
+  use_scalar_norm: False
+  beta_d: 1.0  # must match the BridgeDrive ckpt being warm-started
+  head: HeavyBridgeTrajectoryHead
+  hb_alpha: 1.8
+  hb_varpi: 1.25
+  hb_eta: 0.5
+  hb_num_grid: 20
+  hb_step_num: 2
+  hb_profile: levy  # levy | ones
+  plan_anchor_path: /data/workspace/shuliu/DiffusionDrive/kmeans_navsim/navsim_anchor_k80.npy
+
+
+checkpoint_path: Null  # set for eval of a HeavyBridge ckpt, or to resume
+warm_start_path: Null  # BridgeDrive ckpt to start from (non-strict, no trainer resume)
+lr: 6e-4

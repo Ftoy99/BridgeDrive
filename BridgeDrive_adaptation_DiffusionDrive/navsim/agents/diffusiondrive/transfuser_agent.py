@@ -37,12 +37,15 @@ class TransfuserAgent(AbstractAgent):
         config: TransfuserConfig,
         lr: float,
         checkpoint_path: Optional[str] = None,
+        warm_start_path: Optional[str] = None,
     ):
         """
         Initializes TransFuser agent.
         :param config: global config of TransFuser agent
         :param lr: learning rate during training
         :param checkpoint_path: optional path string to checkpoint, defaults to None
+        :param warm_start_path: optional ckpt whose weights are loaded non-strict at construction without resuming the
+            trainer (run_training passes checkpoint_path to trainer.fit, which would resume and load strict)
         """
         super().__init__()
 
@@ -50,16 +53,18 @@ class TransfuserAgent(AbstractAgent):
         self._lr = lr
 
         self._checkpoint_path = checkpoint_path
+        self._warm_start_path = warm_start_path
         self._transfuser_model = TransfuserModel(config)
         self.init_from_pretrained()
 
     def init_from_pretrained(self):
         # import ipdb; ipdb.set_trace()
-        if self._checkpoint_path:
+        path = self._checkpoint_path or self._warm_start_path
+        if path:
             if torch.cuda.is_available():
-                checkpoint = torch.load(self._checkpoint_path)
+                checkpoint = torch.load(path)
             else:
-                checkpoint = torch.load(self._checkpoint_path, map_location=torch.device('cpu'))
+                checkpoint = torch.load(path, map_location=torch.device('cpu'))
             
             state_dict = checkpoint['state_dict']
             
@@ -87,7 +92,12 @@ class TransfuserAgent(AbstractAgent):
             state_dict: Dict[str, Any] = torch.load(self._checkpoint_path, map_location=torch.device("cpu"))[
                 "state_dict"
             ]
-        self.load_state_dict({k.replace("agent.", ""): v for k, v in state_dict.items()})
+        res = self.load_state_dict({k.replace("agent.", ""): v for k, v in state_dict.items()}, strict=False)
+        # still strict, except the zero-initialised HeavyBridge sigma pathway may be absent (BridgeDrive ckpt through a
+        # HeavyBridge head == its Gaussian bridge)
+        bad = [k for k in res.missing_keys if "sigma_mlp" not in k] + list(res.unexpected_keys)
+        if bad:
+            raise RuntimeError(f"Error(s) in loading state_dict for {self.__class__.__name__}: {bad}")
 
 
     def get_sensor_config(self) -> SensorConfig:

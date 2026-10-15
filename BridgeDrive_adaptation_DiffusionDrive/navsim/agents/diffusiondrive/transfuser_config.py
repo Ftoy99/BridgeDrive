@@ -30,6 +30,14 @@ class TransfuserConfig:
     use_scalar_norm:bool = False
     beta_d:float = 2.0
 
+    # HeavyBridge (used when head == "HeavyBridgeTrajectoryHead")
+    hb_alpha: float = 1.8  # stability index in (0, 2); paper headline (1.8, 5/4)
+    hb_varpi: float = 1.25  # jump-energy factor >= 1
+    hb_eta: float = 0.5  # DBIM churn, paper uses 0.5
+    hb_num_grid: int = 20  # profile grid N
+    hb_step_num: int = 2  # denoising strides at test time, must divide hb_num_grid (paper: 2)
+    hb_profile: str = "levy"  # 'levy' | 'ones' (lambda=1, Gaussian bridge on the same code path)
+
     latent: bool = False
     latent_rad_thresh: float = 4 * np.pi / 9
 
