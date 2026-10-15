@@ -78,6 +78,16 @@ METRIC_NAMES = [
     "score",
 ]
 
+# Forced-anchor stress test (HeavyBridge paper): PDMS of the refined k-th ranked anchor, k = 1 is the classifier pick.
+# The pool is scored in classifier-rank order, so this is free. Ranks beyond the pool size are skipped.
+RANK_SCORES = (1, 2, 3, 5, 10, 20, 40, 80)
+
+
+def rank_score_columns(score_by_rank: np.ndarray) -> Dict[str, float]:
+    """score_by_rank[c] = PDMS of the candidate ranked c+1 by the classifier -> {'rank_score_k': PDMS}."""
+    return {f"rank_score_{k}": float(score_by_rank[k - 1]) for k in RANK_SCORES if k <= len(score_by_rank)}
+
+
 # ---- persistent CPU worker pool ----
 _worker_simulator: PDMSimulator = None
 _worker_scorer: PDMScorer = None
@@ -119,6 +129,7 @@ def _score_one_scene_worker(args: Tuple[str, np.ndarray, np.ndarray]) -> Tuple[D
                 row[f"{tag}_{n}"] = sub[i, j]
         row["pool_size"] = len(poses)
         row["pool_score_mean"] = sub[:, -1].mean()
+        row.update(rank_score_columns(sub[:, -1]))
         return row, True
     except Exception:
         logger.warning("scoring failed for %s", metric_cache_path, exc_info=True)
@@ -286,6 +297,9 @@ def main(cfg: DictConfig) -> None:
             for n in METRIC_NAMES[:-1]:
                 lines.append(f"        {n:32s}{average_row[f'{tag}_{n}']:.4f}")
             lines.append("")
+        rank_cols = [c for c in average_row.index if str(c).startswith("rank_score_")]
+        if rank_cols:
+            lines.append("    forced-anchor PDMS by classifier rank: " + "  ".join(f"k={c.split('_')[-1]}: {average_row[c]:.4f}" for c in rank_cols))
         lines.append(f"    mean PDMS over whole pool: {average_row['pool_score_mean']:.4f} (avg pool size {average_row['pool_size']:.1f})")
         lines.append(f"    Results are stored in: {csv_path}.")
         logger.info("\n".join(lines))
