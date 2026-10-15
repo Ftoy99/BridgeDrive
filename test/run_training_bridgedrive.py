@@ -11,6 +11,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, TQDMProgressBar
 
 from navsim.agents.abstract_agent import AbstractAgent
+from mlflow_rest import MLflowRestCallback  # test/ is sys.path[0]; REST logging, no mlflow package needed
 from navsim.common.dataclasses import SceneFilter
 from navsim.common.dataloader import SceneLoader
 from navsim.planning.training.dataset import CacheOnlyDataset, Dataset
@@ -206,6 +207,19 @@ def main(cfg: DictConfig) -> None:
     patience = int(os.environ.get("PATIENCE", 0))  # 0 = no early stopping (paper: fixed epochs)
     if patience > 0:
         callbacks.append(EarlyStopping(monitor=monitor, patience=patience, mode="min", verbose=True))
+    if os.environ.get("MLFLOW_LOG", "1") == "1":
+        acfg = cfg.agent.config
+        params = {
+            "exp_name": cfg.experiment_name, "output_dir": str(cfg.output_dir), "head": acfg.get("head"), "beta_d": acfg.get("beta_d"),
+            "lr": cfg.agent.lr, "max_epochs": cfg.trainer.params.max_epochs, "batch_size": cfg.dataloader.params.batch_size,
+            "accumulate": cfg.trainer.params.accumulate_grad_batches, "precision": cfg.trainer.params.precision,
+            "seed": cfg.seed, "warm_start_path": cfg.agent.get("warm_start_path"), "resume": cfg.agent.checkpoint_path,
+            "scheduler": acfg.get("scheduler_type"),
+            **{k: acfg.get(k) for k in ("hb_profile", "hb_alpha", "hb_varpi", "hb_eta", "hb_num_grid", "hb_step_num") if acfg.get(k) is not None},
+        }
+        callbacks.append(MLflowRestCallback(os.environ.get("MLFLOW_TRAIN_EXPERIMENT", "navsim_train"),
+                                            f"{cfg.experiment_name}_{Path(str(cfg.output_dir)).name}", params,
+                                            tags={"smoke": os.environ.get("SMOKE", "0") != "0" and "1" or "0"}))
     trainer = pl.Trainer(**cfg.trainer.params, callbacks=callbacks)
 
     logger.info("Starting Training")
