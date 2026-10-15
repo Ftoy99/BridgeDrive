@@ -15,7 +15,7 @@ ap.add_argument("--seed", type=int, default=0); ap.add_argument("--phase", defau
 a = ap.parse_args()
 pool = ROOT / a.pool_id / a.split
 man = json.loads((pool / "pool_manifest.json").read_text())
-cols = json.loads((pool / "metrics.json").read_text())["columns"]
+cols = json.loads((pool / "columns.json").read_text())["columns"]
 ci = {c: i for i, c in enumerate(cols)}
 S = ci["pdm_score"]; NC, DAC = ci["no_at_fault_collisions"], ci["drivable_area_compliance"]
 binary = [c for c in cols if c not in ("pdm_score", "ego_progress")]
