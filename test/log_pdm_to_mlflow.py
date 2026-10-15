@@ -1,8 +1,8 @@
-"""Log one run_pdm_score_fast.py result CSV to MLflow (file store, readable through the mlflow MCP).
+"""Log one run_pdm_score_fast.py result CSV to MLflow (SQLite store, readable through the mlflow MCP).
 
 Usage (needs mlflow, run it through uv so no env changes are needed):
   uv run --with 'mlflow>=3.5' python test/log_pdm_to_mlflow.py <csv | exp_dir> --run-name NAME --param hb_profile=levy ...
-An exp_dir resolves to the newest *.csv below it. Tracking URI: $MLFLOW_TRACKING_URI or file:///mnt/ds/mlflow.
+An exp_dir resolves to the newest *.csv below it. Tracking URI: $MLFLOW_TRACKING_URI or sqlite:////mnt/ds/mlflow/mlflow.db.
 """
 import argparse
 import os
@@ -36,7 +36,7 @@ for c in df.columns:
         pass
 metrics["pdms"] = metrics.get("select_score", metrics.get("score", float("nan")))  # deployed score, one name for dashboards
 
-mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "file:///mnt/ds/mlflow"))
+mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "sqlite:////mnt/ds/mlflow/mlflow.db"))
 mlflow.set_experiment(a.experiment)
 kv = lambda xs: dict(x.split("=", 1) for x in xs)
 with mlflow.start_run(run_name=a.run_name or csv.parent.name) as run:

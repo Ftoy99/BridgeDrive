@@ -35,7 +35,7 @@ python "${DEVKIT}/navsim/planning/script/run_pdm_score_fast.py" \
   experiment_name="${EXP_NAME:-bridgedrive_pdm_fast_ep45}" \
   "${EXTRA[@]}"
 
-# Log the result to MLflow (file store /mnt/ds/mlflow, readable via the mlflow MCP). Never fails the eval. MLFLOW_LOG=0 skips.
+# Log the result to MLflow (SQLite store /mnt/ds/mlflow/mlflow.db, readable via the mlflow MCP). Never fails the eval. MLFLOW_LOG=0 skips.
 if [[ "${MLFLOW_LOG:-1}" == "1" ]]; then
   uv run --no-project --python 3.11 --with 'mlflow>=3.5' python "${REPO_ROOT}/test/log_pdm_to_mlflow.py" \
     "${NAVSIM_EXP_ROOT}/${EXP_NAME:-bridgedrive_pdm_fast_ep45}" \
