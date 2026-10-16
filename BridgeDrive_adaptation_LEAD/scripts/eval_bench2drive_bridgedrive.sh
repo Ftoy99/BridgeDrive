@@ -2,7 +2,7 @@
 
 # Checkpoints
 export CHECKPOINT_DIR=outputs/local_training/bridgedrive_k60
-export ROUTES=data/benchmark_routes/bench2drive_split/bench2drive_111.xml
+export ROUTES=${ROUTES:-data/benchmark_routes/bench2drive_split/bench2drive_111.xml}  # 1 route (smoke); full set: ROUTES=3rd_party/Bench2Drive/leaderboard/data/bench2drive220.xml
 
 # Set environment variables
 export LEAD_PROJECT_ROOT=$(pwd)
