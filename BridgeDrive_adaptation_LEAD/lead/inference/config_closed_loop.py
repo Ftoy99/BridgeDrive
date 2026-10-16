@@ -22,6 +22,9 @@ class ClosedLoopConfig(OpenLoopConfig):
     # --- Kalman Filter Settings ---
     use_kalman_filter = False
 
+    # --- Debug output (overlay replaced is_on_slurm with this; off by default, like upstream locally) ---
+    debug_mode = False
+
     # --- Image Processing ---
     # JPEG quality used in inference (0-100)
     jpeg_quality = 90
