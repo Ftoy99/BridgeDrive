@@ -9,7 +9,7 @@ export LEAD_PROJECT_ROOT=$(pwd)
 export LD_LIBRARY_PATH=""
 source $(pwd)/scripts/main.sh
 export BENCHMARK_ROUTE_ID=$(basename $ROUTES .xml) # Last part of the route file name, e.g., 0 for 0.xml
-export EVALUATION_OUTPUT_DIR=outputs/local_evaluation/$BENCHMARK_ROUTE_ID/
+export EVALUATION_OUTPUT_DIR=${EVAL_OUT_DIR:-outputs/local_evaluation/$BENCHMARK_ROUTE_ID/}  # wrapper sets EVAL_OUT_DIR per RUN_NAME
 export PYTHONPATH=3rd_party/Bench2Drive/leaderboard:$PYTHONPATH
 export PYTHONPATH=3rd_party/Bench2Drive/scenario_runner:$PYTHONPATH
 export SCENARIO_RUNNER_ROOT=3rd_party/Bench2Drive/scenario_runner
