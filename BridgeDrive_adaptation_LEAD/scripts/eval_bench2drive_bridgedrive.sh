@@ -28,7 +28,7 @@ set +e
 rm -rf $EVALUATION_OUTPUT_DIR/
 mkdir -p $EVALUATION_OUTPUT_DIR
 
-CUDA_VISIBLE_DEVICES=4 python3 3rd_party/Bench2Drive/leaderboard/leaderboard/leaderboard_evaluator_v2.py \
+CUDA_VISIBLE_DEVICES=${GPU:-0} python3 3rd_party/Bench2Drive/leaderboard/leaderboard/leaderboard_evaluator_v2.py \
     --routes=$ROUTES \
     --track=SENSORS \
     --checkpoint=$EVALUATION_OUTPUT_DIR/checkpoint_endpoint.json \
@@ -37,7 +37,7 @@ CUDA_VISIBLE_DEVICES=4 python3 3rd_party/Bench2Drive/leaderboard/leaderboard/lea
     --debug=0 \
     --record=None \
     --resume=False \
-    --port=8848 \
+    --port=${CARLA_PORT:-8848} \
     --traffic-manager-port=8000 \
     --timeout=60 \
     --debug-checkpoint=$EVALUATION_OUTPUT_DIR/debug_checkpoint/debug_checkpoint_endpoint.txt \
