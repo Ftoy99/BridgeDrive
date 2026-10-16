@@ -28,4 +28,4 @@ if [ -z "$RESULT" ]; then
 fi
 cd "$BD_DIR" && MLFLOW_DISABLE_AGENT_HINT=1 uv run --no-project --python 3.11 --with 'mlflow>=3.5' python test/log_b2d_to_mlflow.py "$LEAD_DIR/$RESULT" \
   --run-name "$RUN_NAME" --param ckpt=model_BridgeDrive_m2_k60_0030 --param variant=bridgedrive --param routes=$ROUTE_FILE \
-  --param carla_port=$CARLA_PORT --param gpu=$GPU --param resumed=$RESUME --param eval_exit_code=$rc --tag smoke=${SMOKE:-0}
+  --param carla_port=$CARLA_PORT --param gpu=$GPU --param resumed=$RESUME --param eval_exit_code=$rc --tag smoke=${SMOKE:-0} --tag eval_status=$([ "$rc" -eq 0 ] && echo ok || echo crashed)
