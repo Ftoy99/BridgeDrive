@@ -1082,6 +1082,8 @@ class TrainingConfig(BaseConfig):
                 return "h20"
             elif "tesla v100-sxm2-32gb" in name: # v100
                 return "v100"
+            elif "rtx 4090" in name:
+                return "rtx4090"
             else:
                 raise Exception(
                     f"Unknown GPU name: {name}. Please register it in the config."

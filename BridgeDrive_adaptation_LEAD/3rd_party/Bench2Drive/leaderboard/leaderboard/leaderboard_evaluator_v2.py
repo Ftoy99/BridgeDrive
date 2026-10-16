@@ -201,7 +201,9 @@ class LeaderboardEvaluator(object):
         self.carla_path = os.environ["CARLA_ROOT"]
         args.port = find_free_port(args.port)
         print(f"CARLA CUDA_VISIBLE_DEVICES: {os.environ['CUDA_VISIBLE_DEVICES']}")
-        cmd1 = f"{os.path.join(self.carla_path, 'CarlaUE4.sh')} -quality-level=Epic -resx=800 -resy=600 -RenderOffScreen -nosound -carla-rpc-port={args.port} -graphicsadapter={os.environ['CUDA_VISIBLE_DEVICES']}" # ={args.gpu_rank}
+        # CARLA_WINDOWED=1 opens a CARLA window to watch the run; default stays headless
+        display = "-windowed -ResX=960 -ResY=540" if os.environ.get("CARLA_WINDOWED") == "1" else "-RenderOffScreen -resx=800 -resy=600"
+        cmd1 = f"{os.path.join(self.carla_path, 'CarlaUE4.sh')} -quality-level={os.environ.get('CARLA_QUALITY', 'Epic')} {display} -nosound -carla-rpc-port={args.port} -graphicsadapter={os.environ['CUDA_VISIBLE_DEVICES']}" # ={args.gpu_rank}
         self.server = subprocess.Popen(cmd1, shell=True, preexec_fn=os.setsid)
         print(cmd1, self.server.returncode, flush=True)
         atexit.register(os.killpg, self.server.pid, signal.SIGKILL)
