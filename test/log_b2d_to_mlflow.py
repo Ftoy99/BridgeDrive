@@ -29,6 +29,11 @@ metrics = {}
 for k, name in (("driving score", "driving_score"), ("success rate", "success_rate")):
     if k in d:
         metrics[name] = float(d[k])
+if "driving score" not in d and records:  # checkpoint_endpoint.json (partial or per-run): compute from records
+    scores = [r["scores"]["score_composed"] for r in records if r.get("scores")]
+    if scores:
+        metrics["driving_score"] = float(sum(scores) / len(scores))
+    metrics["success_rate"] = float(sum(r.get("status", "").startswith("Completed") for r in records) / len(records))
 metrics["n_routes"] = float(len(records))
 metrics["n_completed"] = float(sum(r.get("status", "").startswith("Completed") for r in records))
 infr = Counter()

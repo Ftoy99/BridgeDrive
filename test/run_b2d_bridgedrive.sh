@@ -11,7 +11,7 @@ CARLA_PORT=${CARLA_PORT:-8848}
 RUN_NAME=${RUN_NAME:-armA_k60_$(date +%m%d_%H%M)}
 FRESH=${FRESH:-0}
 # routes are fixed in scripts/eval_bench2drive_bridgedrive.sh (bench2drive_111); output dir is per RUN_NAME
-ROUTE_FILE=data/benchmark_routes/bench2drive_split/bench2drive_111.xml
+ROUTE_FILE=${ROUTES:-data/benchmark_routes/bench2drive_split/bench2drive_111.xml}
 EVAL_OUT=outputs/local_evaluation/$RUN_NAME
 
 cd "$LEAD_DIR" || exit 1
