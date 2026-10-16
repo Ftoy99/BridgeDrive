@@ -13,7 +13,7 @@ ROUTE_FILE=data/benchmark_routes/bench2drive_split/bench2drive_111.xml
 EVAL_OUT=$LEAD_DIR/outputs/local_evaluation/bench2drive_111
 
 cd "$LEAD_DIR" || exit 1
-echo "launch: GPU=$GPU CARLA_PORT=$CARLA_PORT ROUTE_FILE=$ROUTE_FILE RUN_NAME=$RUN_NAME" | tee -a "$BD_DIR/test/b2d_launches.log"
+echo "launch: RESUME=${RESUME:-0} GPU=$GPU CARLA_PORT=$CARLA_PORT ROUTE_FILE=$ROUTE_FILE RUN_NAME=$RUN_NAME" | tee -a "$BD_DIR/test/b2d_launches.log"
 env GPU=$GPU CARLA_PORT=$CARLA_PORT bash scripts/eval_bench2drive_bridgedrive.sh 2>&1 | tee "outputs/eval_${RUN_NAME}.log"
 rc=${PIPESTATUS[0]}
 echo "eval exit code: $rc"

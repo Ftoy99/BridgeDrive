@@ -24,8 +24,10 @@ export LEAD_TRAINING_CONFIG="diffusion_speed=False"
 set -x
 set +e
 
-# Recreate output folders
-rm -rf $EVALUATION_OUTPUT_DIR/
+# RESUME=1 keeps the output folder and continues from the last finished route (checkpoint_endpoint.json)
+# Fresh run (default) wipes it. Pass the flag as True/empty: argparse type=bool makes "False" True.
+RESUME=${RESUME:-0}
+if [ "$RESUME" = 1 ]; then RESUME_FLAG=True; else RESUME_FLAG=; rm -rf "${EVALUATION_OUTPUT_DIR:?}"/; fi
 mkdir -p $EVALUATION_OUTPUT_DIR
 
 CUDA_VISIBLE_DEVICES=${GPU:-0} python3 3rd_party/Bench2Drive/leaderboard/leaderboard/leaderboard_evaluator_v2.py \
@@ -36,7 +38,7 @@ CUDA_VISIBLE_DEVICES=${GPU:-0} python3 3rd_party/Bench2Drive/leaderboard/leaderb
     --agent-config=$CHECKPOINT_DIR \
     --debug=0 \
     --record=None \
-    --resume=False \
+    --resume=$RESUME_FLAG \
     --port=${CARLA_PORT:-8848} \
     --traffic-manager-port=8000 \
     --timeout=60 \
