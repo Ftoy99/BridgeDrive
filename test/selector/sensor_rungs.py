@@ -60,6 +60,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--out", required=True)
 ap.add_argument("--seeds", default="0,1,2")
 ap.add_argument("--boot", type=int, default=20000)
+ap.add_argument("--tune", action="store_true")  # §5g: inner-split selection of lr/max_iter
 ap.add_argument("--pool", default="/mnt/ds/navsim-main/exp/selector/sensor_pool/sensor_pool.npz")
 a = ap.parse_args()
 
@@ -118,12 +119,15 @@ def fit_pca(tr_idx):
     return m
 
 
-def fit_predict_heads(X, y_all, tr, te):
+GRID = [(lr, it) for lr in (0.05, 0.1) for it in (100, 300, 600)] if a.tune else [(0.1, 200)]  # §5g grid
+
+
+def fit_predict_heads(X, y_all, tr, te, lr=0.1, it=200):
     preds = {}
     Xtr = X[tr].reshape(-1, X.shape[-1])
     Xte = X[te].reshape(-1, X.shape[-1])
     for tname, col in TARGETS.items():
-        m = HistGradientBoostingRegressor(max_iter=200, learning_rate=0.1, random_state=0)
+        m = HistGradientBoostingRegressor(max_iter=it, learning_rate=lr, random_state=0)
         m.fit(Xtr, y_all[tr][..., col].reshape(-1))
         preds[tname] = m.predict(Xte).reshape(len(te), K)
     return preds
@@ -147,7 +151,7 @@ def bootstrap_diff(diff, log_ids, n, rng):
     return (np.percentile(s_means, [2.5, 97.5]), np.percentile(c_means, [2.5, 97.5]))
 
 
-rows, cand_out = [], {}
+rows, cand_out, tune_rows, chosen_cfg = [], {}, [], []
 for seed in [int(s) for s in a.seeds.split(",")]:
     rng = np.random.RandomState(seed)
     uniq = np.unique(logs)
@@ -162,7 +166,26 @@ for seed in [int(s) for s in a.seeds.split(",")]:
             te = np.where(fold == f)[0]
             pcam = fit_pca(tr)
             X = cand_matrix(rung, pcam)
-            p = fit_predict_heads(X, D["pdm"].astype(np.float64), tr, te)
+            Y = D["pdm"].astype(np.float64)
+            cfg = (0.1, 200)
+            if a.tune:
+                # §5g: hold out 10% of training-fold logs; choose config by inner-validation pick PDMS (labels of training scenes only)
+                tr_logs = np.unique(logs[tr])
+                val_logs = set(np.random.RandomState(seed + 100 + f).permutation(tr_logs)[: max(1, len(tr_logs) // 10)])
+                in_val = np.array([l in val_logs for l in logs])
+                itr, iva = tr[~in_val[tr]], tr[in_val[tr]]
+                best = None
+                for g in GRID:
+                    pg = fit_predict_heads(X, Y, itr, iva, *g)
+                    pk = product_score(pg).argmax(1)
+                    v = Y[iva][np.arange(len(iva)), pk, 6].mean()
+                    tune_rows.append(dict(seed=seed, rung=rung, fold=f, lr=g[0], max_iter=g[1], inner_val_pick_pdms=v))
+                    if best is None or v > best[0]:
+                        best = (v, g)
+                cfg = best[1]
+                print(f"seed {seed} {rung} fold {f} chosen lr={cfg[0]} max_iter={cfg[1]} (inner val {best[0]:.4f})", flush=True)
+            p = fit_predict_heads(X, Y, tr, te, *cfg)
+            chosen_cfg.append(dict(seed=seed, rung=rung, fold=f, lr=cfg[0], max_iter=cfg[1]))
             for t in TARGETS:
                 oof_sub[t][te] = p[t]
             oof_pick[te] = product_score(p).argmax(1)
@@ -183,6 +206,9 @@ rows.append(dict(seed=-1, rung="DD_cls", pick_pdms=dd_sel.mean(), delta_vs_dd=0.
 rows.append(dict(seed=-1, rung="oracle", pick_pdms=score.max(1).mean(), delta_vs_dd=score.max(1).mean() - dd_sel.mean()))
 df = pd.DataFrame(rows)
 df.to_csv(out / "sensor_rungs_rows.csv", index=False)
+if a.tune:
+    pd.DataFrame(tune_rows).to_csv(out / "tune_inner_val.csv", index=False)
+pd.DataFrame(chosen_cfg).to_csv(out / "chosen_cfg.csv", index=False)
 np.savez(out / "oof_picks.npz", **cand_out)
 print(df.to_string(index=False))
 json.dump({"n_scenes": int(N), "dd_cls": float(dd_sel.mean()), "oracle": float(score.max(1).mean())},
