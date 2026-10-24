@@ -24,6 +24,11 @@ a = ap.parse_args()
 pool = ROOT / a.pool_id / a.split
 man = json.loads((pool / "pool_manifest.json").read_text())
 d = load(str(pool))
+# DD public dump (dump_dd_pool.py): one final-step cls head, traj instead of final, no gt in v1 (Runbook 1)
+if "logit1" not in d: d["logit1"] = d["logit"]
+if "final" not in d: d["final"] = d["traj"]
+if "gt" not in d and "gt_future" in d: d["gt"] = d["gt_future"]  # v2 dump: GT future under gt_future (Runbook 1)
+has_gt = "gt" in d
 pdm = d["pdm"].astype(np.float64)
 score = pdm[..., 6]; N, K = score.shape; ar = np.arange(N)
 gates = pdm[..., 0] * pdm[..., 1]
@@ -41,17 +46,18 @@ for i, c in enumerate(COLS[:-1]):
 rng = np.random.RandomState(a.seed)
 
 # ---- reproduce the csv anchors (sanity): cls layer0, ADE oracle, nearest anchor to GT
-gt = d["gt"]; final = d["final"]
-m["anchor_cls_layer0"] = score[ar, d["logit0"].argmax(1)].mean()
-ade = np.linalg.norm(final[..., :2] - gt[:, None, :, :2], axis=-1).mean(-1)
-m["anchor_ade_oracle"] = score[ar, ade.argmin(1)].mean()
-if (pool / "anchors.npy").exists():
-    anc = np.load(pool / "anchors.npy")
-    near = np.linalg.norm(gt[:, None, :, :2] - anc[None], axis=-1).mean(-1).argmin(1)
-    m["anchor_nearest_anchor_gt"] = score[ar, near].mean()
-    m["M10_agree_cls_nearest_anchor_pct"] = 100 * (cls == near).mean()
-m["M10_agree_cls_ade_oracle_pct"] = 100 * (cls == ade.argmin(1)).mean()
-m["M10_agree_cls_best_pct"] = 100 * (cls == best).mean()
+if has_gt:
+    gt = d["gt"]; final = d["final"]
+    if "logit0" in d: m["anchor_cls_layer0"] = score[ar, d["logit0"].argmax(1)].mean()
+    ade = np.linalg.norm(final[..., :2] - gt[:, None, :, :2], axis=-1).mean(-1)
+    m["anchor_ade_oracle"] = score[ar, ade.argmin(1)].mean()
+    if (pool / "anchors.npy").exists():
+        anc = np.load(pool / "anchors.npy")
+        near = np.linalg.norm(gt[:, None, :, :2] - anc[None], axis=-1).mean(-1).argmin(1)
+        m["anchor_nearest_anchor_gt"] = score[ar, near].mean()
+        m["M10_agree_cls_nearest_anchor_pct"] = 100 * (cls == near).mean()
+    m["M10_agree_cls_ade_oracle_pct"] = 100 * (cls == ade.argmin(1)).mean()
+    m["M10_agree_cls_best_pct"] = 100 * (cls == best).mean()
 
 # ---- M1 factor oracles (ties broken by classifier prior)
 tie = 1e-6 * logit
@@ -103,13 +109,15 @@ for th in (0.5, 0.8, 0.9):
     m[f"M11_scenes_oracle_below_{th}_pct"] = 100 * (s_best < th).mean()
 m["M11_all_candidates_gate_fail_pct"] = 100 * (gates.max(1) < 1).mean()
 # ---- M7 slices
-disp = np.linalg.norm(gt[:, -1, :2], axis=-1); lat = gt[:, -1, 1]
-sl = {"unsafe_base_plan": gates[ar, cls] < 1, "all_unsafe": gates.max(1) < 1,
-      "slow(<10m)": disp < 10, "mid(10-30m)": (disp >= 10) & (disp < 30), "fast(>=30m)": disp >= 30,
-      "left(y>2)": lat > 2, "straight": np.abs(lat) <= 2, "right(y<-2)": lat < -2}
-rows = [{"slice": k, "scenes_pct": 100 * v.mean(), "H_mean": H[v].mean() if v.any() else np.nan, "H_share": H[v].sum() / Ht,
-         "pick": s_pick[v].mean() if v.any() else np.nan, "oracle": s_best[v].mean() if v.any() else np.nan} for k, v in sl.items()]
-slices = pd.DataFrame(rows)
+if has_gt:
+    disp = np.linalg.norm(gt[:, -1, :2], axis=-1); lat = gt[:, -1, 1]
+    sl = {"unsafe_base_plan": gates[ar, cls] < 1, "all_unsafe": gates.max(1) < 1,
+          "slow(<10m)": disp < 10, "mid(10-30m)": (disp >= 10) & (disp < 30), "fast(>=30m)": disp >= 30,
+          "left(y>2)": lat > 2, "straight": np.abs(lat) <= 2, "right(y<-2)": lat < -2}
+    rows = [{"slice": k, "scenes_pct": 100 * v.mean(), "H_mean": H[v].mean() if v.any() else np.nan, "H_share": H[v].sum() / Ht,
+             "pick": s_pick[v].mean() if v.any() else np.nan, "oracle": s_best[v].mean() if v.any() else np.nan} for k, v in sl.items()]
+    slices = pd.DataFrame(rows)
+else: slices, rows = pd.DataFrame(), []
 for r in rows: m[f"M7_{r['slice']}_H_share"] = r["H_share"]
 
 run = a.run_name or f"sel_{a.pool_id}_{a.phase}_audit_s{a.seed}"

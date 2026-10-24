@@ -5,3 +5,4 @@ test/train.l
 test/train_cycle2.
 __pycache__/
 *.pyc
+mlruns/

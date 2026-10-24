@@ -43,7 +43,8 @@ cols = json.loads((src / "columns.json").read_text())["columns"] if (src / "colu
 sc_idx = cols.index("pdm_score") if cols else -1  # vocabulary label pools (GTRS) carry named columns and no model logits
 score = d["pdm"][..., sc_idx].astype(np.float32)
 N, K = score.shape
-sel = score[np.arange(N), d["logit1"].argmax(1)].mean() if "logit1" in d else float("nan")
+lg = d.get("logit1", d.get("logit"))  # dd_pool dumps store the final cls logits as "logit"
+sel = score[np.arange(N), lg.argmax(1)].mean() if lg is not None else float("nan")
 metrics = {"n_scenes": N, "K": K, "pdms_select": float(sel), "pdms_oracle": float(score.max(1).mean()),
            "pool_mean": float(score.mean()), "headroom": float(score.max(1).mean() - sel)}
 metrics = {k: v for k, v in metrics.items() if v == v}
