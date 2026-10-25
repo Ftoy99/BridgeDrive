@@ -13,9 +13,13 @@ from torch.utils.data import DataLoader, Dataset
 logger = logging.getLogger(__name__)
 REPO_CONFIG = "/mnt/jimmys/public_repos/DiffusionDrive/navsim/planning/script/config/pdm_scoring"
 EXP = Path(os.environ.get("NAVSIM_EXP_ROOT", "/mnt/ds/navsim-main/exp"))
-POOL_TOKENS = EXP / "selector/dd_k20_public_v2/navtest"
-DIRS = {0: EXP / "sensor_cache_dd_navtest", 1: EXP / "sensor_cache_dd_navtest_hist/lag1",
-        2: EXP / "sensor_cache_dd_navtest_hist/lag2", 3: EXP / "sensor_cache_dd_navtest_hist/lag3"}
+POOL_TOKENS = Path(os.environ.get("POOL_TOKENS", EXP / "selector/dd_k20_public_v2/navtest"))
+if os.environ.get("CACHE_ROOT"):  # §5h: one root with lag0..lag3 subdirs (navtrain-20k)
+    _root = Path(os.environ["CACHE_ROOT"])
+    DIRS = {l: _root / f"lag{l}" for l in range(4)}
+else:
+    DIRS = {0: EXP / "sensor_cache_dd_navtest", 1: EXP / "sensor_cache_dd_navtest_hist/lag1",
+            2: EXP / "sensor_cache_dd_navtest_hist/lag2", 3: EXP / "sensor_cache_dd_navtest_hist/lag3"}
 OUT = Path(os.environ.get("POOL_OUT", EXP / "selector/sensor_pool"))
 
 

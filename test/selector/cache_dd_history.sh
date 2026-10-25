@@ -27,6 +27,6 @@ mkdir -p "${CACHE_ROOT}"
 echo "cache root: ${CACHE_ROOT}"
 cd "${REPO_ROOT}"
 "${PY}" test/selector/cache_dd_history.py \
-  train_test_split=navtest agent=diffusiondrive_agent \
+  train_test_split="${TRAIN_SPLIT:-navtest}" agent=diffusiondrive_agent \
   +agent.config.bkb_path="${BKB_PATH}" +agent.config.plan_anchor_path="${ANCHOR_PATH}" \
   experiment_name=sensor_cache_dd_history "${EXTRA[@]}"

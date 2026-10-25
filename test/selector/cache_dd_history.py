@@ -17,7 +17,9 @@ from navsim.agents.diffusiondrive.transfuser_features import TransfuserFeatureBu
 
 logger = logging.getLogger(__name__)
 REPO_CONFIG = "/mnt/jimmys/public_repos/DiffusionDrive/navsim/planning/script/config/pdm_scoring"
-LAGS = [1, 2, 3]  # past frames at 2 Hz, fixed in advance (Experiment Plan §5f)
+# past frames at 2 Hz, fixed in advance (Experiment Plan §5f). LAGS=0,1,2,3 env builds the current-frame cache too (§5h).
+LAGS = [int(x) for x in os.environ.get("LAGS", "1,2,3").split(",")]
+TOKENS_FILE = os.environ.get("TOKENS_FILE")  # optional token list (one per line): restricts the scene set (§5h navtrain-20k)
 N_THREADS = int(os.environ.get("N_THREADS", 20))
 CACHE_ROOT = Path(os.environ["CACHE_ROOT"])
 
@@ -46,6 +48,10 @@ def main(cfg: DictConfig) -> None:
         scene_filter=instantiate(cfg.train_test_split.scene_filter), sensor_config=sensor_config,
     )
     tokens = list(loader.tokens)
+    if TOKENS_FILE:
+        wanted = set(Path(TOKENS_FILE).read_text().split())
+        tokens = [t for t in tokens if t in wanted]
+        assert len(tokens) == len(wanted), f"{len(wanted) - len(tokens)} wanted tokens not in filter"
     logger.info("history cache: %d scenes, lags %s -> %s", len(tokens), LAGS, CACHE_ROOT)
 
     def work(token):
