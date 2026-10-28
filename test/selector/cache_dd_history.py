@@ -3,7 +3,7 @@ Same builder, same per-scene layout as the devkit cache (log_name/initial_token/
 one cache dir per lag. Current frame is the existing sensor_cache_dd_navtest. Resumes (skips existing files).
   N_THREADS=20 python test/selector/cache_dd_history.py   (run via cache_dd_history.sh for env)
 """
-import logging, os, traceback
+import json, logging, os, time, traceback
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
@@ -49,13 +49,25 @@ def main(cfg: DictConfig) -> None:
     )
     tokens = list(loader.tokens)
     if TOKENS_FILE:
-        wanted = set(Path(TOKENS_FILE).read_text().split())
-        tokens = [t for t in tokens if t in wanted]
-        assert len(tokens) == len(wanted), f"{len(wanted) - len(tokens)} wanted tokens not in filter"
+        if TOKENS_FILE.endswith(".json"):  # E-sel-B fit list {tokens, logs}: processing order = list order, scenes cached in the list's log are skipped without loading
+            fl = json.loads(Path(TOKENS_FILE).read_text())
+            order, log_of = fl["tokens"], dict(zip(fl["tokens"], fl["logs"]))
+            have = set(tokens)
+            assert all(t in have for t in order), f"{sum(t not in have for t in order)} wanted tokens not in filter"
+            tokens = order
+        else:
+            wanted = set(Path(TOKENS_FILE).read_text().split())
+            tokens = [t for t in tokens if t in wanted]
+            assert len(tokens) == len(wanted), f"{len(wanted) - len(tokens)} wanted tokens not in filter"
     logger.info("history cache: %d scenes, lags %s -> %s", len(tokens), LAGS, CACHE_ROOT)
+
+    log_of = locals().get("log_of", {})
+    names = builder.get_unique_name() + ".gz"
 
     def work(token):
         try:
+            if log_of and all((CACHE_ROOT / f"lag{l}" / log_of[token] / token / names).exists() for l in LAGS):
+                return token, None
             scene = loader.get_scene_from_token(token)
             meta = scene.scene_metadata
             agent_input = scene.get_agent_input()
@@ -69,14 +81,18 @@ def main(cfg: DictConfig) -> None:
         except Exception:
             return token, traceback.format_exc()
 
-    failed = []
+    failed, t0, mark = [], time.time(), int(os.environ.get("MARK_AT", 0))
     with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
         for i, (token, err) in enumerate(ex.map(work, tokens), 1):
             if err:
                 failed.append((token, err))
             if i % 1000 == 0:
-                logger.info("%d / %d done, %d failed", i, len(tokens), len(failed))
+                eta = (time.time() - t0) / i * (len(tokens) - i)
+                logger.info("%d / %d done, %d failed, ETA %.1f h (includes skipped scenes)", i, len(tokens), len(failed), eta / 3600)
+            if mark and i == mark:
+                logger.info("STAGE_B_CACHE_50K %d scenes", i)
     logger.info("done: %d scenes, %d failed", len(tokens), len(failed))
+    print("STAGE_B_CACHE_DONE" if not failed else f"STAGE_B_CACHE_DONE with {len(failed)} failed", flush=True)
     if failed:
         (CACHE_ROOT / "failed.txt").write_text("\n".join(f"{t}\n{e}" for t, e in failed))
 
